@@ -6,6 +6,7 @@ from datetime import datetime
 
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 from PIL import Image
 import torch
@@ -24,7 +25,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=0, help='starting epoch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs of training')
 parser.add_argument('--batch_size', type=int, default=1, help='size of the batches')
-parser.add_argument('--dataroot', type=str, default='', help='root directory of the dataset')
+parser.add_argument('--path_A', type=str, required=True, help='directory path of domain A')
+parser.add_argument('--path_B', type=str, required=True, help='directory path of domain B')
 parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate')
 parser.add_argument('--decay_epoch', type=int, default=100, help='epoch to start linearly decaying the learning rate to 0')
 parser.add_argument('--size', type=int, default=256, help='size of the data crop (squared assumed)')
@@ -33,16 +35,25 @@ parser.add_argument('--output_nc', type=int, default=3, help='number of channels
 parser.add_argument('--cuda', default=True, action='store_true', help='use GPU computation')
 parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
 parser.add_argument('--resume', type=str, default='', help='snapshot path')
+parser.add_argument('--tqdm', default=False, action='store_true', help='use tqdm')
 opt = parser.parse_args()
 print(opt)
 
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 #
-output_dir = f'./outputs/{datetime.now().strftime("%Y-%m-%d_%H_%M_%S")}'
-snapshot_dir = f'./snapshots/{datetime.now().strftime("%Y-%m-%d_%H_%M_%S")}'
+
+now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
+output_dir = f'./outputs/{now}'
+snapshot_dir = f'./snapshots/{now}'
+log_dir = f'./logs/{now}'
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(snapshot_dir, exist_ok=True)
+os.makedirs(log_dir, exist_ok=True)
+
+# tensorboard
+writer = SummaryWriter(log_dir)
+logger = Logger(writer)
 
 ###### Definition of variables ######
 # Networks
@@ -86,14 +97,15 @@ target_fake = Variable(Tensor(opt.batch_size, 1).fill_(0.0), requires_grad=False
 
 fake_A_buffer = ReplayBuffer()
 fake_B_buffer = ReplayBuffer()
-print(opt.dataroot)
+print(opt.path_A)
+print(opt.path_B)
 # Dataset loader
-transforms_ = [ transforms.Resize(int(opt.size*1.12), Image.BOX),  # Image.BICUBIC
+transforms_ = [ transforms.Resize(int(opt.size), Image.BOX),  # Image.BICUBIC
                 transforms.RandomCrop(opt.size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
-dataloader = DataLoader(ImageDataset(opt.dataroot, transforms_=transforms_, unaligned=True),
+dataloader = DataLoader(ImageDataset(opt.path_A, opt.path_B, transforms_=transforms_, unaligned=True),
                         batch_size=opt.batch_size, shuffle=True, num_workers=opt.n_cpu)
 
 # Loss plot
@@ -139,17 +151,22 @@ def transform_sample(sample):
 # sample_B = transform_sample(read_image(os.path.join(opt.dataroot, 'train/B/Ceremonial_Dagger.png'))).cuda()
 ###################################
 
+_real_A = None
+_real_B = None
+_fake_A = None
+_fake_B = None
 ###### Training ######
 while epoch < opt.n_epochs:
-    pbar = tqdm(total=len(dataloader), initial=iter)
-    pbar.set_description(f'Epoch {epoch}')
+    if opt.tqdm:
+        pbar = tqdm(total=len(dataloader), initial=iter)
+        pbar.set_description(f'Epoch {epoch}')
     for batch in dataloader:
         if iter >= len(dataloader):
             iter = 0
             break
         # Set model input
-        real_A = Variable(input_A.copy_(batch['A']))
-        real_B = Variable(input_B.copy_(batch['B']))
+        _real_A = real_A = Variable(input_A.copy_(batch['A']))
+        _real_B = real_B = Variable(input_B.copy_(batch['B']))
 
         ###### Generators A2B and B2A ######
         optimizer_G.zero_grad()
@@ -163,12 +180,12 @@ while epoch < opt.n_epochs:
         loss_identity_A = criterion_identity(same_A, real_A)*5.0
 
         # GAN loss
-        fake_B = netG_A2B(real_A)
+        _fake_B = fake_B = netG_A2B(real_A)
         pred_fake = netD_B(fake_B)
         loss_GAN_A2B = criterion_GAN(pred_fake, target_real)
         fake_B_out = fake_B
 
-        fake_A = netG_B2A(real_B)
+        _fake_A = fake_A = netG_B2A(real_B)
         pred_fake = netD_A(fake_A)
         loss_GAN_B2A = criterion_GAN(pred_fake, target_real)
         fake_A_out = fake_A
@@ -232,8 +249,12 @@ while epoch < opt.n_epochs:
 
         # print images
         if iter % 50 == 0:
-          outputs = torch.cat([real_A, fake_B, real_B, fake_A], dim=0)
+          outputs = torch.cat([_real_A.detach(), _fake_B.detach(), _real_B.detach(), _fake_A.detach()], dim=0)
           save_image(outputs, f'{output_dir}/{epoch}_{iter}.png', nrow=opt.batch_size)
+          if not opt.tqdm:
+            print(f"[{epoch:4>} epoch {iter:4>} iters] G: {logs['loss_G']:.4f} |" 
+            f"G_GAN: {logs['loss_G_GAN']:.4f} | G_identity: {logs['loss_G_identity']:.4f} | "
+            f"G_cycle:_{logs['loss_G_cycle']:.4f} | D: {logs['loss_D']:.4f}")
 
         # save snapshot
         if iter % 100 == 0:
@@ -254,7 +275,10 @@ while epoch < opt.n_epochs:
             }
             torch.save(snapshot, os.path.join(snapshot_dir, f'latest.pt'))
 
-        pbar.update(1)
+        if opt.tqdm:
+            pbar.update(1)
+        logger.log(logs, iter)
+
         # Progress report (http://localhost:8097)
         # logger.log({'loss_G': loss_G, 'loss_G_identity': (loss_identity_A + loss_identity_B), 'loss_G_GAN': (loss_GAN_A2B + loss_GAN_B2A),
         #             'loss_G_cycle': (loss_cycle_ABA + loss_cycle_BAB), 'loss_D': (loss_D_A + loss_D_B)},
@@ -277,5 +301,6 @@ while epoch < opt.n_epochs:
     # logger.print_samples(samples)
     epoch += 1
     iter = 0
-    pbar.close()
+    if opt.tqdm:
+      pbar.close()
 ###################################
