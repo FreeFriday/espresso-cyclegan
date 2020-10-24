@@ -12,10 +12,12 @@ class ImageDataset(Dataset):
         self.transform = transforms.Compose(transforms_)
         self.unaligned = unaligned
 
-        self.files_A = glob.glob(os.path.expanduser(os.path.join(path_A + '/*.*')))
+        # self.files_A = glob.glob(os.path.expanduser(os.path.join(path_A + '/*.*')))
+        
+        self.files_A = glob.glob('/home/freefridays/datasets/256_ObjectCategories/*/**')
         self.files_A = [img for img in self.files_A if '.png' in img or '.jpg' in img or '.jpeg' in img]
         self.files_A = [img for img in self.files_A if len(np.array(Image.open(img)).shape) == 3 and np.array(Image.open(img)).shape[2] == 3]
-
+        
         self.files_B = glob.glob(os.path.expanduser(os.path.join(path_B + '/*.*')))
         self.files_B = [img for img in self.files_B if '.png' in img or '.jpg' in img or '.jpeg' in img]
         self.files_B = [img for img in self.files_B if len(np.array(Image.open(img)).shape) == 3 and np.array(Image.open(img)).shape[2] == 3]

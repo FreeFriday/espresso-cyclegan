@@ -41,7 +41,7 @@ print(opt)
 
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
-#
+
 
 now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
 output_dir = f'./outputs/{now}'
@@ -257,7 +257,7 @@ while epoch < opt.n_epochs:
             f"G_cycle:_{logs['loss_G_cycle']:.4f} | D: {logs['loss_D']:.4f}")
 
         # save snapshot
-        if iter % 100 == 0:
+        if iter % 3000 == 0:
             snapshot = {
                 'epoch': epoch,
                 'iter': iter,
@@ -273,7 +273,7 @@ while epoch < opt.n_epochs:
                 'fake_A_buffer': fake_A_buffer,
                 'fake_B_buffer': fake_B_buffer
             }
-            torch.save(snapshot, os.path.join(snapshot_dir, f'latest.pt'))
+            torch.save(snapshot, os.path.join(snapshot_dir, f'{epoch}_{iter}.pt'))
 
         if opt.tqdm:
             pbar.update(1)
