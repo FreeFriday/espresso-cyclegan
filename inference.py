@@ -26,21 +26,23 @@ from datasets import ImageDataset
 parser = argparse.ArgumentParser()
 parser.add_argument('--input', type=str, required=True, help='input image path')
 parser.add_argument('--output', type=str, default='./result.jpg', required=False, help='output image path')
+parser.add_argument('--size', type=int, default=256, help='size of the data crop (squared assumed)')
 parser.add_argument('--model', type=str, required=True, help='model path')
 parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
 parser.add_argument('--output_nc', type=int, default=3, help='number of channels of output data')
 opt = parser.parse_args()
 
 # model
-netG_A2B = Generator(opt.input_nc, opt.output_nc)
-netG_B2A = Generator(opt.output_nc, opt.input_nc)
+netG_A2B = Generator(opt.input_nc, opt.output_nc).cuda()
+netG_B2A = Generator(opt.output_nc, opt.input_nc).cuda()
 state = torch.load(opt.model)
 netG_A2B.load_state_dict(state['netG_A2B'])
 netG_B2A.load_state_dict(state['netG_B2A'])
 
 
 def transform_sample(sample):
-    transforms_sample_ = [ transforms.ToTensor(),
+    transforms_sample_ = [ transforms.Resize((opt.size, opt.size), Image.BOX),
+                           transforms.ToTensor(),
                            transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]
     for transform in transforms_sample_:
         sample = transform(sample)
@@ -49,7 +51,7 @@ def transform_sample(sample):
 
 
 def inference():
-    _input = transform_sample(read_image(opt.input)).cuda()
+    _input = transform_sample(Image.open(opt.input).convert('RGB')).cuda()
     _output = netG_A2B(_input)
     result = torch.cat([_input.detach(), _output.detach()], dim=0)
     save_image(result, opt.output, nrow=1)

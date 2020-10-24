@@ -17,8 +17,9 @@ def save_image(tensor, path, nrow=4):
     Image.fromarray(img).save(path)
 
 
-def read_image(path, mode='rgb'):
-    return np.array(Image.open(path).convert(mode))
+def read_image(path, mode='RGB'):
+    img = Image.open(path)
+    return np.array(img.convert(mode))
 
 
 def tensor2image(tensor):
