@@ -4,22 +4,6 @@ import os
 from tqdm import tqdm
 from datetime import datetime
 
-import torchvision.transforms as transforms
-from torch.utils.tensorboard import SummaryWriter
-from torch.autograd import Variable
-from PIL import Image
-import torch
-
-from models import Generator
-from models import Discriminator
-from utils import ReplayBuffer
-from utils import LambdaLR
-from utils import Logger
-from utils import save_image
-from utils import weights_init_normal
-from utils import read_image
-from datasets import get_dataloader
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=0, help='starting epoch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs of training')
@@ -37,21 +21,37 @@ parser.add_argument('--resume', type=str, default='', help='snapshot path')
 parser.add_argument('--tqdm', default=False, action='store_true', help='use tqdm')
 parser.add_argument('--device', type=str, default=0, help='GPU ID')
 parser.add_argument('--mask', default=False, action='store_true', help='use MSRA15K dataset as domain A')
+parser.add_argument('--name', help='result dir name', default=datetime.now().strftime('%Y-%m-%d_%H_%M_%S'), type=str)
 opt = parser.parse_args()
+os.environ['CUDA_VISIBLE_DEVICES'] = opt.device
 print(opt)
+
+import torch
+import torchvision.transforms as transforms
+from torch.utils.tensorboard import SummaryWriter
+from torch.autograd import Variable
+from PIL import Image
+from models import Generator
+from models import Discriminator
+from utils import ReplayBuffer
+from utils import LambdaLR
+from utils import Logger
+from utils import save_image
+from utils import weights_init_normal
+from utils import read_image
+from datasets import get_dataloader
 
 if torch.cuda.is_available() and not opt.cuda:
     print("WARNING: You have a CUDA device, so you should probably run with --cuda")
 
-
-now = datetime.now().strftime("%Y-%m-%d_%H_%M_%S")
-output_dir = f'./outputs/{now}'
-snapshot_dir = f'./snapshots/{now}'
-log_dir = f'./logs/{now}'
+name = opt.name
+base_dir = f'./results/{name}'
+output_dir = os.path.join(base_dir, 'outputs')
+snapshot_dir = os.path.join(base_dir, 'snapshots')
+log_dir = os.path.join(base_dir, 'logs')
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(snapshot_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
-os.environ['CUDA_VISIBLE_DEVICES'] = opt.device
 
 # tensorboard
 writer = SummaryWriter(log_dir)
@@ -251,25 +251,6 @@ while epoch < opt.n_epochs:
             f"G_GAN: {logs['loss_G_GAN']:.4f} | G_identity: {logs['loss_G_identity']:.4f} | "
             f"G_cycle:_{logs['loss_G_cycle']:.4f} | D: {logs['loss_D']:.4f}")
 
-        # save snapshot
-        if iter % 10000 == 0:
-            snapshot = {
-                'epoch': epoch,
-                'iter': iter,
-                'batch_size': opt.batch_size,
-                'size': opt.size,
-                'netG_A2B': netG_A2B.state_dict(),
-                'netG_B2A': netG_B2A.state_dict(),
-                'netD_A': netD_A.state_dict(),
-                'netD_B': netD_B.state_dict(),
-                'optimizer_G': optimizer_G.state_dict(),
-                'optimizer_D_A': optimizer_D_A.state_dict(),
-                'optimizer_D_B': optimizer_D_B.state_dict(),
-                'fake_A_buffer': fake_A_buffer,
-                'fake_B_buffer': fake_B_buffer
-            }
-            torch.save(snapshot, os.path.join(snapshot_dir, f'{epoch}_{iter}.pt'))
-
         if opt.tqdm:
             pbar.update(1)
         logger.log(logs, iter)
@@ -278,6 +259,24 @@ while epoch < opt.n_epochs:
         # logger.log({'loss_G': loss_G, 'loss_G_identity': (loss_identity_A + loss_identity_B), 'loss_G_GAN': (loss_GAN_A2B + loss_GAN_B2A),
         #             'loss_G_cycle': (loss_cycle_ABA + loss_cycle_BAB), 'loss_D': (loss_D_A + loss_D_B)},
         #             images={'real_A': real_A, 'real_B': real_B, 'fake_A': fake_A_out.detach(), 'fake_B': fake_B_out.detach()})
+
+    # save snapshot
+    snapshot = {
+        'epoch': epoch,
+        'iter': iter,
+        'batch_size': opt.batch_size,
+        'size': opt.size,
+        'netG_A2B': netG_A2B.state_dict(),
+        'netG_B2A': netG_B2A.state_dict(),
+        'netD_A': netD_A.state_dict(),
+        'netD_B': netD_B.state_dict(),
+        'optimizer_G': optimizer_G.state_dict(),
+        'optimizer_D_A': optimizer_D_A.state_dict(),
+        'optimizer_D_B': optimizer_D_B.state_dict(),
+        'fake_A_buffer': fake_A_buffer,
+        'fake_B_buffer': fake_B_buffer
+    }
+    torch.save(snapshot, os.path.join(snapshot_dir, f'{epoch}_{iter}.pt'))
 
     # Update learning rates
     lr_scheduler_G.step()
