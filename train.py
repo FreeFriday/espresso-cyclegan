@@ -35,6 +35,8 @@ parser.add_argument('--cuda', default=True, action='store_true', help='use GPU c
 parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
 parser.add_argument('--resume', type=str, default='', help='snapshot path')
 parser.add_argument('--tqdm', default=False, action='store_true', help='use tqdm')
+parser.add_argument('--device', type=str, default=0, help='GPU ID')
+parser.add_argument('--mask', default=False, action='store_true', help='use MSRA15K dataset as domain A')
 opt = parser.parse_args()
 print(opt)
 
@@ -49,6 +51,7 @@ log_dir = f'./logs/{now}'
 os.makedirs(output_dir, exist_ok=True)
 os.makedirs(snapshot_dir, exist_ok=True)
 os.makedirs(log_dir, exist_ok=True)
+os.environ['CUDA_VISIBLE_DEVICES'] = opt.device
 
 # tensorboard
 writer = SummaryWriter(log_dir)
@@ -96,15 +99,6 @@ target_fake = Variable(Tensor(opt.batch_size, 1).fill_(0.0), requires_grad=False
 
 fake_A_buffer = ReplayBuffer()
 fake_B_buffer = ReplayBuffer()
-print(opt.path_A)
-print(opt.path_B)
-# Dataset loader
-transforms_ = [ transforms.RandomResizedCrop(int(opt.size), (0.2, 1.0)),
-                # transforms.Resize(int(opt.size), Image.BOX),  # Image.BICUBIC
-                # transforms.RandomCrop(opt.size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) ]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
 dataloader = get_dataloader(opt.path_A, opt.path_B, opt)
 
 # Loss plot
