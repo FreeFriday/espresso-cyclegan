@@ -5,7 +5,6 @@ from tqdm import tqdm
 from datetime import datetime
 
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
 from PIL import Image
@@ -19,15 +18,15 @@ from utils import Logger
 from utils import save_image
 from utils import weights_init_normal
 from utils import read_image
-from datasets import ImageDataset
+from datasets import get_dataloader
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--epoch', type=int, default=0, help='starting epoch')
 parser.add_argument('--n_epochs', type=int, default=200, help='number of epochs of training')
 parser.add_argument('--batch_size', type=int, default=1, help='size of the batches')
-parser.add_argument('--path_A', type=str, required=True, help='directory path of domain A')
-parser.add_argument('--path_B', type=str, required=True, help='directory path of domain B')
-parser.add_argument('--lr', type=float, default=0.0002, help='initial learning rate')
+parser.add_argument('--path_A', type=str, help='directory path of domain A', default='/home/freefridays/datasets/photo2som/trainA/*')
+parser.add_argument('--path_B', type=str, help='directory path of domain B', default='/home/freefridays/datasets/photo2som/trainB/*')
+parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')
 parser.add_argument('--decay_epoch', type=int, default=100, help='epoch to start linearly decaying the learning rate to 0')
 parser.add_argument('--size', type=int, default=256, help='size of the data crop (squared assumed)')
 parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
@@ -100,13 +99,13 @@ fake_B_buffer = ReplayBuffer()
 print(opt.path_A)
 print(opt.path_B)
 # Dataset loader
-transforms_ = [ transforms.Resize(int(opt.size), Image.BOX),  # Image.BICUBIC
-                transforms.RandomCrop(opt.size),
+transforms_ = [ transforms.RandomResizedCrop(int(opt.size), (0.2, 1.0)),
+                # transforms.Resize(int(opt.size), Image.BOX),  # Image.BICUBIC
+                # transforms.RandomCrop(opt.size),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5)) ]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
-dataloader = DataLoader(ImageDataset(opt.path_A, opt.path_B, transforms_=transforms_, unaligned=True),
-                        batch_size=opt.batch_size, shuffle=True, num_workers=opt.n_cpu)
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) ]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
+dataloader = get_dataloader(opt.path_A, opt.path_B, opt)
 
 # Loss plot
 # logger = Logger(opt.n_epochs, len(dataloader))
@@ -248,16 +247,18 @@ while epoch < opt.n_epochs:
          'loss_D': (loss_D_A + loss_D_B)}
 
         # print images
-        if iter % 50 == 0:
+        if iter % 500 == 0:
           outputs = torch.cat([_real_A.detach(), _fake_B.detach(), _real_B.detach(), _fake_A.detach()], dim=0)
           save_image(outputs, f'{output_dir}/{epoch}_{iter}.png', nrow=opt.batch_size)
-          if not opt.tqdm:
-            print(f"[{epoch:4>} epoch {iter:4>} iters] G: {logs['loss_G']:.4f} |" 
+
+        # print log
+        if iter % 1 == 0 and not opt.tqdm:
+            print(f"[{epoch:04} epoch {iter:04} iters] G: {logs['loss_G']:.4f} | " 
             f"G_GAN: {logs['loss_G_GAN']:.4f} | G_identity: {logs['loss_G_identity']:.4f} | "
             f"G_cycle:_{logs['loss_G_cycle']:.4f} | D: {logs['loss_D']:.4f}")
 
         # save snapshot
-        if iter % 3000 == 0:
+        if iter % 10000 == 0:
             snapshot = {
                 'epoch': epoch,
                 'iter': iter,
