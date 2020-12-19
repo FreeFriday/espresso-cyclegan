@@ -16,7 +16,7 @@ parser.add_argument('--size', type=int, default=256, help='size of the data crop
 parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
 parser.add_argument('--output_nc', type=int, default=3, help='number of channels of output data')
 parser.add_argument('--cuda', default=True, action='store_true', help='use GPU computation')
-parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
+parser.add_argument('--n_cpu', type=int, default=2, help='number of cpu threads to use during batch generation')
 parser.add_argument('--resume', type=str, default='', help='snapshot path')
 parser.add_argument('--tqdm', default=False, action='store_true', help='use tqdm')
 parser.add_argument('--device', type=str, default=0, help='GPU ID')
@@ -112,7 +112,7 @@ if opt.resume:
     state = torch.load(opt.resume)
     epoch = state['epoch']
     iter = state['iter']
-    opt.batch_size = state['batch_size']
+    # opt.batch_size = state['batch_size']
     opt.size = state['size']
     netG_A2B.load_state_dict(state['netG_A2B'])
     netG_B2A.load_state_dict(state['netG_B2A'])
