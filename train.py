@@ -19,7 +19,7 @@ parser.add_argument('--cuda', default=True, action='store_true', help='use GPU c
 parser.add_argument('--n_cpu', type=int, default=2, help='number of cpu threads to use during batch generation')
 parser.add_argument('--resume', type=str, default='', help='snapshot path')
 parser.add_argument('--tqdm', default=False, action='store_true', help='use tqdm')
-parser.add_argument('--device', type=str, default=0, help='GPU ID')
+parser.add_argument('--device', type=str, default='0', help='GPU ID')
 parser.add_argument('--mask', default=False, action='store_true', help='use MSRA15K dataset as domain A')
 parser.add_argument('--name', help='result dir name', default=datetime.now().strftime('%Y-%m-%d_%H_%M_%S'), type=str)
 opt = parser.parse_args()
@@ -30,7 +30,6 @@ import torch
 import torchvision.transforms as transforms
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
-from PIL import Image
 from models import Generator
 from models import Discriminator
 from utils import ReplayBuffer
@@ -38,7 +37,6 @@ from utils import LambdaLR
 from utils import Logger
 from utils import save_image
 from utils import weights_init_normal
-from utils import read_image
 from datasets import get_dataloader
 
 if torch.cuda.is_available() and not opt.cuda:

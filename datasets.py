@@ -1,6 +1,5 @@
 import glob
 from random import randint
-import os
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from PIL import Image

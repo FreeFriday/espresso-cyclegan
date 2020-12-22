@@ -1,8 +1,5 @@
 import argparse
-import itertools
 import os
-from tqdm import tqdm
-from datetime import datetime
 
 # arg parser
 parser = argparse.ArgumentParser()
@@ -13,27 +10,17 @@ parser.add_argument('--size', type=int, default=256, help='size of the data crop
 parser.add_argument('--model', type=str, required=True, help='model path')
 parser.add_argument('--input_nc', type=int, default=3, help='number of channels of input data')
 parser.add_argument('--output_nc', type=int, default=3, help='number of channels of output data')
-parser.add_argument('--device', type=str, default=0, help='GPU ID')
+parser.add_argument('--device', type=str, default='0', help='GPU ID')
 opt = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = opt.device
 print(opt)
 
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-from torch.autograd import Variable
 import numpy as np
 from PIL import Image
 from models import Generator
-from models import Discriminator
-from utils import ReplayBuffer
-from utils import LambdaLR
-from utils import Logger
 from utils import save_image
-from utils import weights_init_normal
-from utils import read_image
-from datasets import ImageDataset
 
 
 # model
