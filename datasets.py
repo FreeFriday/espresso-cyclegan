@@ -69,8 +69,7 @@ def get_dataloader(pathA, pathB, opt):
                    transforms.RandomHorizontalFlip(),
                    transforms.ToTensor(),
                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
-    transforms_B = [transforms.Resize(int(opt.size), Image.BOX),  # Image.BICUBIC
-                    transforms.RandomCrop(opt.size),
+    transforms_B = [transforms.RandomCrop(opt.size),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
                     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]  # (0.5,0.5,0.5) (0.5,0.5,0.5,0.5)
