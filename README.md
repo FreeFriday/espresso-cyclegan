@@ -34,7 +34,8 @@ You can get the result at `./results/result_dir_name`.
 
 ## Test
 ```
-python inference.py --input=input/path.png 
+python inference.py --model=snapshot/path.pt
+                    --input=input/path.png 
                     --output=output/path.png 
                     --output_inout=output_with_input/path.png
 ```
