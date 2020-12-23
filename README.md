@@ -1,14 +1,40 @@
-# Pytorch-CycleGAN
-A clean and readable Pytorch implementation of CycleGAN (https://arxiv.org/abs/1703.10593)
+## Introduction
+Pytorch implementation of CycleGAN based on a [repository](https://github.com/aitorzip/PyTorch-CycleGAN).
 
 ## Prerequisites
-Code is intended to work with ```Python 3.6.x```, it hasn't been tested with previous versions
+Code is tested on 
+```
+Python: 3.7.9
+Pytorch: 1.6.0
+```
 
-### [PyTorch & torchvision](http://pytorch.org/)
-Follow the instructions in [pytorch.org](http://pytorch.org) for your current setup
+## Dataset
+```
+├── dataset
+   ├── domainA
+       ├── 000001.jpg 
+       ├── 000002.jpg
+        ...
+   └── domainB
+       ├── 000001.jpg 
+       ├── 000002.jpg
+        ...
+```
 
-### [Visdom](https://github.com/facebookresearch/visdom)
-To plot loss graphs and draw images in a nice web browser view
-`python train.py --path_A=/home/freefridays/datasets/photo2som/trainA/* --path_B=/home/freefridays/datasets/photo2som/trainB/* --batch_size=3 --name=my_dir_name`
+## Training
+```
+python train.py --path_A=dataset/domainA/* 
+                --path_B=dataset/domainB/* 
+                --batch_size=3 
+                --name=result_dir_name
+```
 
-`python inference.py --input=input/path.png --output=output/path.png --output_inout=output_with_input/path.png`
+You can get the result at `./results/result_dir_name`.
+
+
+## Test
+```
+python inference.py --input=input/path.png 
+                    --output=output/path.png 
+                    --output_inout=output_with_input/path.png
+```
